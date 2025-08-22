@@ -1,44 +1,29 @@
 # =========================
-# Auto-export for IMU driver
+# export.mk (simple, non-recursive)
 # =========================
-# Имя библиотеки КАПСОМ. ДОЛЖНО совпадать с тем, что сгенерит configure.py:
-#   name: "imu_driver"  -> var: IMU_DRIVER
-LIBNAME := INNER_PROTO
+LIBNAME := MPU9250_LIB      # <-- ПОДМЕНИ: INNER_PROTO / MPU9250_LIB / QMC5883_LIB
 
-# Путь до либы приходит из основного проекта:
-#   IMU_DRIVER_DIR := <...>   (создаётся generated/third_party.mk)
-LIB_DIR := $($(LIBNAME)_DIR)
+LIB := $(strip $(LIBNAME))
+LIB_DIR := $($(LIB)_DIR)
 
+# Диагностика — оставить на время
+$(info [$(LIB)] DIR=$(LIB_DIR))
+
+# Папки
 INC_ROOT := $(LIB_DIR)/Inc
 SRC_ROOT := $(LIB_DIR)/Src
 
-# --- Файлы (рекурсивно): все .c, .s/.S и директории с заголовками ---
-# Требуется 'find'. Если его нет, см. "Вариант без find" ниже.
+# Includes: Inc/ + её подпапки первого уровня (без дублей)
+$(LIB)_INC_DIRS := $(wildcard $(INC_ROOT)) $(wildcard $(INC_ROOT)/*)
+$(LIB)_INCLUDES := $(addprefix -I,$(sort $($(LIB)_INC_DIRS)))
 
-# Все исходники C/ASM под Src/**
-$(LIBNAME)_SRCS := $(shell find "$(SRC_ROOT)" -type f \( -name '*.c' -o -name '*.s' -o -name '*.S' \) 2>/dev/null)
+# Sources: только файлы в Src/ (без подпапок)
+$(LIB)_SRCS := $(wildcard $(SRC_ROOT)/*.c) $(wildcard $(SRC_ROOT)/*.s) $(wildcard $(SRC_ROOT)/*.S)
 
-# Все директории, где лежат хедеры, под Inc/**
-# 1) найти все *.h/*.hpp, 2) взять их директории, 3) уникализировать, 4) превратить в -I...
-$(LIBNAME)_HDRS := $(shell find "$(INC_ROOT)" -type f \( -name '*.h' -o -name '*.hpp' \) 2>/dev/null)
-$(LIBNAME)_INC_DIRS := $(sort $(dir $($(LIBNAME)_HDRS)))
-$(LIBNAME)_INCLUDES := $(addprefix -I,$($(LIBNAME)_INC_DIRS))
-
-# --- Опциональные дефайны/доп.линковка (правь по мере надобности) ---
-$(LIBNAME)_DEFS :=
-$(LIBNAME)_LIBS :=
-
-# --- Проверки существования каталогов (чтобы make не ругался на пустые) ---
+# Экспорт
 ifneq ($(wildcard $(INC_ROOT)),)
-  C_INCLUDES += $($(LIBNAME)_INCLUDES)
+  C_INCLUDES += $($(LIB)_INCLUDES)
 endif
 ifneq ($(wildcard $(SRC_ROOT)),)
-  C_SOURCES  += $($(LIBNAME)_SRCS)
+  C_SOURCES  += $($(LIB)_SRCS)
 endif
-
-C_DEFS += $($(LIBNAME)_DEFS)
-LIBS   += $($(LIBNAME)_LIBS)
-
-# --- Отладочный вывод (раскомментируй при необходимости) ---
-# $(info [$(LIBNAME)] INC: $($(LIBNAME)_INCLUDES))
-# $(info [$(LIBNAME)] SRC: $($(LIBNAME)_SRCS))
