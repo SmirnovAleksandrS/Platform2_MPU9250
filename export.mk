@@ -1,29 +1,34 @@
-# =========================
-# export.mk (simple, non-recursive)
-# =========================
-LIBNAME := MPU9250_LIB      # <-- ПОДМЕНИ: INNER_PROTO / MPU9250_LIB / QMC5883_LIB
+# ---- export.mk (strict, non-recursive, guarded) ----
+# УСТАНОВИ ПРАВИЛЬНО LIBNAME для КАЖДОЙ ЛИБЫ!
+LIBNAME := MPU9250_LIB    # <- в mpu9250-lib поставить MPU9250_LIB, в QMC поставить QMC5883_LIB
 
+# -------- include-guard --------
 LIB := $(strip $(LIBNAME))
+ifndef $(LIB)_EXPORT_INCLUDED
+$(LIB)_EXPORT_INCLUDED := 1
+
+# -------- базовые пути от generated/third_party.mk --------
 LIB_DIR := $($(LIB)_DIR)
 
-# Диагностика — оставить на время
-$(info [$(LIB)] DIR=$(LIB_DIR))
+# Проверки (дадут понятную ошибку, если что-то не так)
+ifeq ($(strip $(LIB_DIR)),)
+  $(error [$(LIB)] $($(LIB)_DIR) is empty. Check LIBNAME and generated/third_party.mk)
+endif
 
-# Папки
 INC_ROOT := $(LIB_DIR)/Inc
 SRC_ROOT := $(LIB_DIR)/Src
 
-# Includes: Inc/ + её подпапки первого уровня (без дублей)
-$(LIB)_INC_DIRS := $(wildcard $(INC_ROOT)) $(wildcard $(INC_ROOT)/*)
-$(LIB)_INCLUDES := $(addprefix -I,$(sort $($(LIB)_INC_DIRS)))
-
-# Sources: только файлы в Src/ (без подпапок)
-$(LIB)_SRCS := $(wildcard $(SRC_ROOT)/*.c) $(wildcard $(SRC_ROOT)/*.s) $(wildcard $(SRC_ROOT)/*.S)
-
-# Экспорт
-ifneq ($(wildcard $(INC_ROOT)),)
-  C_INCLUDES += $($(LIB)_INCLUDES)
+ifeq ($(wildcard $(INC_ROOT))$(wildcard $(SRC_ROOT)),)
+  $(error [$(LIB)] Expected $(INC_ROOT) and $(SRC_ROOT) to exist. Found: INC=$(wildcard $(INC_ROOT)) SRC=$(wildcard $(SRC_ROOT)))
 endif
-ifneq ($(wildcard $(SRC_ROOT)),)
-  C_SOURCES  += $($(LIB)_SRCS)
-endif
+
+# -------- добавляем пути и исходники (БЕЗ рекурсии) --------
+C_INCLUDES += -I$(INC_ROOT)
+C_SOURCES  += $(wildcard $(SRC_ROOT)/*.c) $(wildcard $(SRC_ROOT)/*.s) $(wildcard $(SRC_ROOT)/*.S)
+
+# Отладочный вывод (оставь пока)
+$(info [$(LIB)] DIR=$(LIB_DIR))
+$(info [$(LIB)] +I=$(INC_ROOT))
+$(info [$(LIB)] SRCS=$(wildcard $(SRC_ROOT)/*.c) $(wildcard $(SRC_ROOT)/*.s) $(wildcard $(SRC_ROOT)/*.S))
+
+endif  # include-guard
