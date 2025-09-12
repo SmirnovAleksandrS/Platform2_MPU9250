@@ -8,7 +8,15 @@ extern "C" {
 #endif
 
 #include "main.h"
+
+#if defined(STM32F411xE) || defined(STM32F411xC)
+#include "stm32f4xx.h"
+#elif  defined(STM32F103xB) || defined(STM32F103x8) || defined(STM32F103xE)
 #include "stm32f1xx.h"
+#else
+#error "Unsupported STM32 target: define STM32F411x* or STM32F103x*"
+#endif
+
 #include "math.h"
 #include "stdlib.h"
 #include "MPU9250RegisterMap.h"
